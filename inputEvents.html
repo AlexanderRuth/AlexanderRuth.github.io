@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<style>
+
+.timeBox
+{
+	width:35%;
+	height:100%;
+	float:left;
+	padding: 10px;
+}
+
+.copyNextSelector
+{
+	width:35%;
+	float: left;
+	margin-top: 10px;
+}
+
+fieldset
+{
+	float: left;
+	width: 15%;
+	margin: 3px;
+}
+
+.copyNextButton
+{
+	width:20%;
+	padding: 10px;
+	float: left;
+}
+
+.submit
+{
+	padding: 10px;
+	width: 40%;
+	margin-left: 10px;
+}
+
+ul.textBar
+{
+	list-style-type:none;
+	overflow:hidden;
+	margin:0px;
+	padding:0px;
+	background-color:black;
+}
+li.textItem
+{
+	float:left;
+}
+
+li a
+{
+	background-color:black;
+	padding:10px;
+	color:white;
+	text-decoration:none;
+	display:block;
+	text-align:center;
+}
+
+li a:hover
+{
+	background-color:grey;
+}
+
+</style>
+</head>
+
+<header style="background-color:tan">
+<ul class="textBar">
+	<li class="textItem"><a href="inputEvents.html">Scheduler</a></li>
+	<li class="textItem"><a href="scheduleTable.html">MySchedule</a></li>
+</ul>
+
+<fieldset style="float:none; width:100%; padding:0px; margin:0px; border:none">
+<legend>Date Select</legend>
+<select id="dateSelect" onchange="setCurDate()" style="float:left">
+</select>
+<button onclick="submitBoxes()" id="save" style="height:100%; width:100%">Save Today's Schedule</button>
+</fieldset>
+
+</header>
+
+<body>
+<script>
+
+var INTERVAL = 30;
+var curDate = formatDate(new Date());
+var NUM_DATES_TO_DISPLAY = 5;
+var textBoxes = [];
+
+function setCurDate()
+{
+	curDate = document.getElementById("dateSelect").value;
+	repopulateBoxes();
+}
+
+
+function repopulateBoxes()
+{
+	var listOfEvents;
+
+	if(localStorage.getItem(curDate) != null)
+		{
+			listOfEvents = JSON.parse(localStorage.getItem(curDate))["events"];
+		}
+		
+	else
+		listOfEvents = null;
+		
+		
+	console.log(listOfEvents);
+	
+	
+	if(listOfEvents == null)
+	{
+		for (var i = 0; i < 1440 / INTERVAL; i++)
+		{
+			console.log("setting value");
+			textBoxes[i].value = "";
+		}
+	}
+	
+	else
+	{
+		for (var i = 0; i < textBoxes.length; i++)
+		{
+			textBoxes[i].value = listOfEvents[i];
+		}
+	}
+}
+
+function loadPage()
+{
+	var listOfEvents = [];
+	
+	console.log("CURDATE =========== " + curDate);
+	
+	if(localStorage.getItem(curDate) != null)
+		{
+			listOfEvents = JSON.parse(localStorage.getItem(curDate))["events"];
+		}
+	
+	textBoxes = displayTextBoxes(listOfEvents);
+	
+	addCopyNext(textBoxes);
+	
+}
+
+loadPage();
+populateDateSelect();
+
+function populateDateSelect()
+{
+	var dateDropDown = document.getElementById("dateSelect");
+	var dateCounter = new Date(curDate);
+	var dateOption;
+	//var lineBreak = document.createElement("br");
+	
+	
+	//dateDropDown.id = "dateSelect";
+	//dateDropDown.onchange = setCurDate;
+	
+	//document.body.appendChild(dateDropDown);
+	//document.body.appendChild(lineBreak);
+
+	
+	for (var i = 0; i < NUM_DATES_TO_DISPLAY; i++)
+	{
+		dateOption = document.createElement("option");
+		dateOption.label = formatDate(dateCounter);
+		dateOption.value = formatDate(dateCounter);
+		
+		dateDropDown.appendChild(dateOption);
+		dateCounter.setDate(dateCounter.getDate() + 1);
+	}
+}
+
+function submitBoxes()
+{
+	var listOfEvents = [];
+	
+	var loadNewPage = this.id == "submit" ? true : false;
+
+	for (var i = 0; i < textBoxes.length; i++)
+		{
+			listOfEvents.push(textBoxes[i].value);
+		}
+		
+	saveEvents(curDate, listOfEvents, loadNewPage);
+}
+
+//Display the text boxes, interval not needed if listOfEvents is populated
+function displayTextBoxes(listOfEvents)
+{
+	var curTime = new Time(0, 0, INTERVAL);
+	var listOfTextBoxes = [];
+	var timesToLoop = 1440/INTERVAL;
+	var curBox;
+	var lineBreak = document.createElement("br");
+	
+	var isPopulated = listOfEvents.length > 0 ? true : false;  //Is the listOfEvents already populated?
+	
+	for(var i = 0; i < timesToLoop; i++)
+		{
+			curLegend = document.createElement("legend");
+			curLegend.innerHTML = curTime.toStandardTime();
+			
+			curBox = document.createElement("input");
+			curBox.id = "box" + i;
+			curBox.className = "timeBox";
+			curBox.value = isPopulated ? listOfEvents[i] : "";
+			
+			curFieldset = document.createElement("fieldset");
+			curFieldset.id = "fieldset" + i;
+			
+			curFieldset.appendChild(curLegend);
+			curFieldset.appendChild(curBox);
+			
+			if(i % 4 == 0)
+				{
+					document.body.appendChild(lineBreak);
+				}
+				
+			listOfTextBoxes.push(curBox);
+			
+			//curFieldset.appendChild(createCopyNext(i, timesToLoop));
+			
+			document.body.appendChild(curFieldset);
+			curTime.iterate();
+		
+		}
+		
+	return listOfTextBoxes;
+}
+
+function loadDate(curDate)
+{
+	if(curDate in localStorage)
+		{
+			return localStorage[curDate];
+		}
+	
+	else
+		{
+			return [];
+		}
+}
+
+function saveEvents(date, listOfEvents, loadNewPage)
+{
+
+	var curDay = new Day(date, listOfEvents);
+	
+	
+	localStorage.setItem(date, JSON.stringify(curDay));
+	
+	localStorage.setItem("startDate", date);
+	
+	if(loadNewPage)
+		window.location = "scheduleTable.html";
+}
+
+function iterateTime(hour, minute, interval)
+{
+	if(minute + interval == 60)
+		{
+			minute = 0;
+			
+		}
+}
+
+function Time(tHour, tMinute, tInterval)
+{
+	this.hour = tHour;        //The time's hour
+	this.minute = tMinute;    //The time's minute
+	this.interval = tInterval;  //The interval to iterate by
+	
+	//Returns the time in a standard xx:xx a.m./p.m. format
+	this.toStandardTime = function(){
+	
+		var timeString = "";
+		
+		if (this.hour % 12 == 0)
+			{
+				timeString += 12;
+			}
+
+		else
+			{
+				timeString += this.hour < 12 ? this.hour : this.hour - 12;
+			}
+			
+		timeString += ":";
+		
+		timeString += this.minute < 10 ? "0" + this.minute.toString() : this.minute;
+		
+		timeString += " ";
+		
+		timeString += this.hour < 12 ? "a.m." : "p.m.";
+		
+		return timeString;
+	}
+	
+	//Iterates the time
+	this.iterate = function(){
+		if (this.minute + this.interval == 60)
+			{
+				this.minute = 0;
+				this.hour++;
+			}
+			
+		else
+			{
+				this.minute += this.interval;
+			}
+	}
+}
+
+//Returns a copy next button, or the submit button for the last item
+function createCopyNext(currentIteration, timesToIterate)
+{
+	var boxesRemaining = timesToIterate - currentIteration - 1;
+	var submitButton;
+	var curHour = Math.floor(currentIteration * INTERVAL / 60);
+	var curMinute = 60 * (currentIteration * INTERVAL / 60 - curHour);
+	
+	var curTime = new Time(curHour, curMinute, INTERVAL);
+	
+	if (boxesRemaining == 0)
+		{
+			submitButton = document.createElement("button");
+			submitButton.innerHTML = "Submit";
+			submitButton.className = "submit";
+			submitButton.id = "submit";
+			submitButton.onclick = submitBoxes;
+			
+			return submitButton;
+		}
+		
+	var copyNextSelector = document.createElement("select");
+	var option;
+	
+	copyNextSelector.className = "copyNextSelector";
+	
+	for (i = 1; i <= boxesRemaining; i++)
+		{
+			curTime.iterate();
+			option = document.createElement("option");
+			
+			option.value = i;
+			option.label = curTime.toStandardTime();
+			
+			copyNextSelector.appendChild(option);
+		}
+	
+	copyNextSelector.id = "copyNum" + currentIteration;
+	
+	return copyNextSelector;
+}
+
+function addCopyNext(listOfTextBoxes)
+{
+	var curBoxID = 0;
+
+	for(var i = 0; i < listOfTextBoxes.length; i++)
+	{
+		curBoxID = i;
+		
+		curFieldSet = document.getElementById("fieldset" + curBoxID);
+		curFieldSet.appendChild(createCopyNext(curBoxID, listOfTextBoxes.length));
+		
+		//If it is not the last box, add the copy Next button
+		if (i + 1 != listOfTextBoxes.length)
+			{
+			curFieldSet.appendChild(copyNextButton(curBoxID));
+			}
+
+	}
+}
+
+function copyNextButton(index)
+{
+	var copyNextButton = document.createElement("button");
+	copyNextButton.id = "copyButton" + index;
+	copyNextButton.value = index;
+	copyNextButton.onclick = copyNext;
+	
+	
+	copyNextButton.className = "copyNextButton";
+	copyNextButton.innerHTML = "Copy";
+	
+	//If it is the last box
+	if (index == textBoxes.length - 1)
+		{
+			return null;
+		}
+		
+	return copyNextButton;
+}
+
+function copyNext()
+{
+	var index = Number(this.value);
+	var timesToCopy = Number(document.getElementById("copyNum" + index).value); //The number of times needed to copy as given by the drop down menu
+	var copyVal = textBoxes[index].value;                         //The value to be copied
+	
+	for (var i = 1; i < timesToCopy + 1; i++)
+		{
+			textBoxes[i + index].value = copyVal;
+		}
+}
+
+function Day(dDate, dEvents)
+{
+	this.date = dDate;
+	this.events = dEvents;
+}
+
+function formatDate(date)
+{
+	var day = date.getDate();
+	var month = date.getMonth();
+	var year = date.getFullYear();
+	
+	return month + 1 + "/" + day + "/" + year;
+
+}
+
+</script>
+
+<body>
+
+</html>
